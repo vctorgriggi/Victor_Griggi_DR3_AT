@@ -4,6 +4,8 @@ on:
 jobs:
   show-env:
     runs-on: ubuntu-latest
+    env:
+      DEPLOY_ENV: staging
     steps:
       - name: Exibir variavel de ambiente
-        run: echo "Ambiente de deploy: staging"
+        run: echo "Ambiente de deploy: $DEPLOY_ENV"
