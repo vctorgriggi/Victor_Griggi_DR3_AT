@@ -1,0 +1,24 @@
+name: Env Demo
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  demo-variaveis:
+    name: Demonstracao de Variaveis
+    runs-on: ubuntu-latest
+
+    env:
+      DEPLOY_ENV: staging
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Exibir variavel de ambiente
+        run: |
+          echo "========================================="
+          echo "Ambiente de deploy configurado: $DEPLOY_ENV"
+          echo "========================================="
