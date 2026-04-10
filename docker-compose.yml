@@ -1,0 +1,24 @@
+services:
+  postgres:
+    image: leogloriainfnet/ufodb:1.0-win
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: devops2025!
+      POSTGRES_DB: ufology
+
+  redis:
+    image: redis:alpine
+
+  ufo-tracker:
+    build:
+      context: ./ufoTracker
+    ports:
+      - "8080:8080"
+    environment:
+      POSTGRES_USERNAME: postgres
+      POSTGRES_PASSWORD: devops2025!
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/ufology
+      SPRING_DATA_REDIS_HOST: redis
+    depends_on:
+      - postgres
+      - redis
