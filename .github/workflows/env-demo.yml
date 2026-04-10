@@ -1,6 +1,7 @@
-name: Env Demo
+name: "Env Demo"
 
-on: [push]
+on:
+  push:
 
 jobs:
   show-env:
