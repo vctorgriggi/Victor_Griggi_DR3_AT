@@ -1,0 +1,200 @@
+# ============================================================
+# missao 1 - banco de dados postgresql
+# ============================================================
+
+# namespace exclusivo da operacao ufology
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ufology
+
+---
+
+# deployment do postgresql com imagem customizada
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: ufology
+  labels:
+    app: postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: leogloriainfnet/ufodb:1.0-win
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_USER
+              value: "postgres"
+            - name: POSTGRES_PASSWORD
+              value: "devops2025!"
+            - name: POSTGRES_DB
+              value: "ufology"
+
+---
+
+# service interno para o postgresql
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-svc
+  namespace: ufology
+  labels:
+    app: postgres
+spec:
+  type: ClusterIP
+  selector:
+    app: postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
+
+---
+
+# ============================================================
+# missao 2 - sistema de cache redis
+# ============================================================
+
+# deployment do redis alpine
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: ufology
+  labels:
+    app: redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:alpine
+          ports:
+            - containerPort: 6379
+
+---
+
+# service interno para o redis
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-svc
+  namespace: ufology
+  labels:
+    app: redis
+spec:
+  type: ClusterIP
+  selector:
+    app: redis
+  ports:
+    - port: 6379
+      targetPort: 6379
+
+---
+
+# ============================================================
+# missao 4 - aplicacao ufo-tracker
+# ============================================================
+
+# configmap com dados nao-sensiveis
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: ufology
+data:
+  DB_NAME: "ufology"
+
+---
+
+# secret com dados sensiveis (senha do banco)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: db-secret
+  namespace: ufology
+type: Opaque
+data:
+  DB_PASSWORD: ZGV2b3BzMjAyNSE=
+
+---
+
+# deployment da aplicacao com 2 replicas
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ufo-tracker
+  namespace: ufology
+  labels:
+    app: ufo-tracker
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ufo-tracker
+  template:
+    metadata:
+      labels:
+        app: ufo-tracker
+    spec:
+      containers:
+        - name: ufo-tracker
+          image: vctorgriggi/ufo-tracker:latest
+          ports:
+            - containerPort: 8080
+          env:
+            # credenciais do postgres via configmap e secret
+            - name: POSTGRES_USERNAME
+              value: "postgres"
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-secret
+                  key: DB_PASSWORD
+            # sobrescreve url do banco para apontar pro service k8s
+            - name: SPRING_DATASOURCE_URL
+              value: "jdbc:postgresql://postgres-svc:5432/ufology"
+            # sobrescreve host do redis para apontar pro service k8s
+            - name: SPRING_DATA_REDIS_HOST
+              value: "redis-svc"
+            # db name vindo do configmap
+            - name: DB_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: DB_NAME
+
+---
+
+# service para a aplicacao
+apiVersion: v1
+kind: Service
+metadata:
+  name: ufo-tracker-svc
+  namespace: ufology
+  labels:
+    app: ufo-tracker
+spec:
+  type: ClusterIP
+  selector:
+    app: ufo-tracker
+  ports:
+    - port: 8080
+      targetPort: 8080
